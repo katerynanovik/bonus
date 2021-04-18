@@ -1,0 +1,185 @@
+<html>
+
+<head>
+
+
+</head>
+
+<body>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.0.0-beta3/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-eOJMYsd53ii+scO/bJGFsiCZc+5NDVN2yr8+0RDqr0Ql0h+rP48ckxlpbzKgwra6" crossorigin="anonymous">
+<link href="https://cdn.webdatarocks.com/1.3.1/webdatarocks.min.css" rel="stylesheet"/>
+<script src="https://cdn.webdatarocks.com/1.3.1/webdatarocks.toolbar.min.js"></script>
+<script src="https://cdn.webdatarocks.com/1.3.1/webdatarocks.js"></script>
+<script src="https://cdn.webdatarocks.com/1.3.1/webdatarocks.amcharts.js"></script>
+<script src="https://www.amcharts.com/lib/4/core.js"></script>
+<script src="https://www.amcharts.com/lib/4/charts.js"></script>
+<script src="https://www.amcharts.com/lib/4/themes/animated.js"></script>
+
+    <div class="row">
+        <div class="col-6">
+            <div id="wdr-component1"></div>
+        </div>
+        <div class="col-6">
+            <div id="wdr-component2"></div>
+        </div>
+    </div>
+    <div id="chartContainer"></div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.0.0-beta3/dist/js/bootstrap.bundle.min.js" integrity="sha384-JEW9xMcG8R+pH31jmWH6WWP0WintQrMb4s7ZOdauHnUtxwoG2vI5DkLtS3qm9Ekf" crossorigin="anonymous"></script>
+
+</body>
+
+</html>
+
+<script>
+    var pivot1 = new WebDataRocks({
+        container: "#wdr-component1",
+        toolbar: true,
+        height: 490,
+        report: "https://cdn.webdatarocks.com/reports/report.json",
+         reportcomplete: function() {
+             pivot1.off("reportcomplete");
+        createPieChart();
+    }
+    });
+
+    var pivot2 = new WebDataRocks({
+        container: "#wdr-component2",
+        toolbar: true,
+        height: 490,
+
+
+        report: {
+            dataSource: {
+                filename: "https://cdn.webdatarocks.com/data/data.csv"
+            },
+            "slice": {
+                "rows": [{
+                        "uniqueName": "Category"
+                    },
+                    {
+                        "uniqueName": "Business Type"
+                    }
+                ],
+                "columns": [{
+                    "uniqueName": "Measures"
+                }],
+                "measures": [{
+                        "uniqueName": "Price",
+                        "aggregation": "sum",
+                        "format": "currency"
+
+                    },
+                    {
+                        "uniqueName": "Quantity",
+                        "aggregation": "sum"
+                    },
+                    {
+                        "uniqueName": "Price * Quantity",
+                        "formula": "sum(\"Price\") * sum(\"Quantity\") ",
+                        "individual": true,
+                        "caption": "Overall Price (Price x Quantity)",
+                        "format": "currency"
+                    }
+                ],
+                "expands": {
+                    "rows": [{
+                        "tuple": [
+                            "Category.Accessories"
+                        ]
+                    }]
+                },
+                "sorting": {
+                    "column": {
+                        "type": "desc",
+                        "tuple": [],
+                        "measure": "Price"
+                    }
+                }
+
+            },
+
+            "conditions": [{
+                    "formula": "#value <= 20000000",
+                    "measure": "Price * Quantity",
+                    "format": {
+                        "backgroundColor": "#E57373",
+                        "color": "#000000",
+                        "fontFamily": "Arial",
+                        "fontSize": "12px"
+                    }
+                },
+                {
+                    "formula": "#value >= 40000000",
+                    "measure": "Price * Quantity",
+                    "format": {
+                        "backgroundColor": "#AED581",
+                        "color": "#000000",
+                        "fontFamily": "Arial",
+                        "fontSize": "12px"
+                    }
+                },
+                {
+                    "formula": "AND(#value > 20000000, #value < 40000000)",
+                    "measure": "Price * Quantity",
+                    "format": {
+                        "backgroundColor": "#FFF59D",
+                        "color": "#000000",
+                        "fontFamily": "Arial",
+                        "fontSize": "12px"
+                    }
+                }
+            ],
+            formats: [{
+                name: "currency",
+                currencySymbol: "$",
+                currencySymbolAlign: "left",
+                thousandsSeparator: ",",
+                decimalPlaces: 2
+            }]
+        },
+        width: "100%",
+        height: 490,
+        toolbar: true,
+        
+    });
+var chart;
+
+function createPieChart() {
+    /* Get all the data from the pivot grid (alternatively, a slice can be passed to getData() as the first argument) */
+    pivot1.amcharts.getData({}, drawChart, updateChart);
+}
+
+function drawChart(chartData, rawData) {
+    /* Apply amCharts theme */
+    am4core.useTheme(am4themes_animated);
+  
+    /* Create chart instance */
+    chart = am4core.create("chartContainer", am4charts.PieChart);
+  
+    /* Add data processed by WebDataRocks to the chart */
+    chart.data = chartData.data;
+    var numberFormat = pivot1.amcharts.getNumberFormatPattern(rawData.meta.formats[0]);
+  
+    /* Apply number formatting to the chart */
+    chart.numberFormatter.numberFormat = numberFormat;
+  
+    /* Create and configure series for a pie chart */
+    var pieSeries = chart.series.push(new am4charts.PieSeries());
+    pieSeries.dataFields.category = pivot1.amcharts.getCategoryName(rawData);
+    pieSeries.dataFields.value = pivot1.amcharts.getMeasureNameByIndex(rawData, 0);
+    pieSeries.slices.template.stroke = am4core.color("#fff");
+    pieSeries.slices.template.strokeWidth = 2;
+    pieSeries.slices.template.strokeOpacity = 1;
+  
+    /* Create initial animation */
+    pieSeries.hiddenState.properties.opacity = 1;
+    pieSeries.hiddenState.properties.endAngle = -90;
+    pieSeries.hiddenState.properties.startAngle = -90;
+}
+
+function updateChart(chartData, rawData) {
+    chart.dispose();
+    drawChart(chartData, rawData);
+}
+</script>
